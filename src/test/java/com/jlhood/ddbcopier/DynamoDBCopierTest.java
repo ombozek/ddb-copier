@@ -1,6 +1,7 @@
 package com.jlhood.ddbcopier;
 
 import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 import java.util.Arrays;
@@ -80,6 +81,18 @@ public class DynamoDBCopierTest {
         event.setRecords(Arrays.asList(streamRecord));
 
         copier.accept(event);
+        verifyNoMoreInteractions(amazonDynamoDB);
+    }
+
+    @Test
+    public void accept_ttlDeleteAndRemove() throws Exception {
+        DynamodbEvent event = new DynamodbEvent();
+        DynamodbEvent.DynamodbStreamRecord streamRecord = toDynamoDbStreamRecord(DynamoDBCopier.DELETE_EVENT_NAME, streamRecord(attributeValue("a", "b"), null));
+        streamRecord.setUserIdentity(DynamoDBCopier.TTL_IDENTITY);
+        event.setRecords(Arrays.asList(streamRecord, toDynamoDbStreamRecord(DynamoDBCopier.DELETE_EVENT_NAME, streamRecord(attributeValue("c", "d"), null))));
+
+        copier.accept(event);
+        verify(amazonDynamoDB).deleteItem(DESTINATION_TABLE, ImmutableMap.of("c", new AttributeValue("d")));
         verifyNoMoreInteractions(amazonDynamoDB);
     }
 
